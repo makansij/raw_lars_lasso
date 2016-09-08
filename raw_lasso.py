@@ -61,21 +61,23 @@ def LARS(data, label_col):
             for col in feature_cols:
                 x_j = data[col].values.reshape(len(data[col].values), 1)
                 lm = linear_model.LinearRegression()
-                print ' the fit is ', lm.fit(x_j, y)
-                print ' the score is ', lm.score(x_j, y)
-                print ' the coefficient is ', lm.coef_
+                lm.fit(x_j, y)
                 score = lm.score(x_j, y)
                 coeff = lm.coef_
                 if score > max_corr:
                     max_corr = score
                     max_corr_feature = col
-            print ' feature with max corr is ', max_corr_feature
-            # store the model with the new coefficient and feature
+            # print ' feature with max corr is ', max_corr_feature
+            # store the model with the new coefficient and feature 
+            if type(coeff) ==type(np.array([])):
+                coeff=coeff[0]
+            
+            #print 'the current_lm_model coeff_dict before is ', current_lm_model.coeff_dict
             current_lm_model.add_coeff_and_feature(max_corr_feature, coeff)
+            #print 'the current_lm_model coeff_dict AFTER is ', current_lm_model.coeff_dict
         else:
-            i=0
-            # increase betas in the joint least squares direction,
-            #....while no model is found
+            # increase betas in the joint least squares direction
+            # ...while no model is found
             better_corr = False
             while (not better_corr):
                 # get residuals
@@ -90,7 +92,7 @@ def LARS(data, label_col):
                 # compute correlation of current model with the residuals
                 curr_model_correlation = OLS(data[current_lm_model.coeff_dict.keys()].as_matrix(), residuals)
                 # check if curr_model_correlation is zero???
-                print ' curr_model_correlation is ', curr_model_correlation
+                #print ' curr_model_correlation is ', curr_model_correlation
                 # compute correlation of each feature not yet in the model with the residuals 
                 correlations = [(OLS(data[x_j].values.reshape(len(data[x_j].values), 1), residuals.reshape(len(residuals), 1)), x_j) \
                                 for x_j in filter(lambda aCol: aCol not in current_lm_model.coeff_dict.keys(), feature_cols)]
@@ -106,13 +108,13 @@ def LARS(data, label_col):
                     # increase the betas in the joint least squares direction
                     x = current_lm_model.coeff_dict.values()
                     keys = current_lm_model.coeff_dict.keys()
-                    print ' before it is ', dict(zip(keys,x))
+                    #print ' before it is ', dict(zip(keys,x))
                     eps = np.zeros_like(x)                # create empty array [0, 0, 0]
                     index = np.argmin(gradient(x))        # get position of the lowest value in the array 
                     eps[index] = 0.1                      # go to that position in the empty array above, and replace it with epsilon   
                     x += eps                              # add the array with epsilon but otherwise empty, to the original array, x
 
-                    print ' after it is ', dict(zip(keys,x))
+                    #print ' after it is ', dict(zip(keys,x))
                     current_lm_model.coeff_dict = dict(zip(keys,x))
                     
         # Step 2:  start increasing beta until there's another feature that
@@ -134,14 +136,16 @@ def get_residuals(current_lm_model, data, label_col):
 
     current_feature_cols = filter(lambda aCol: aCol in features, data.columns)
     data_matrix = data[current_feature_cols].as_matrix()
-    betas_vector = np.matrix(coefficients)
-    print ' data_matrix.shape[1] is ', data_matrix.shape[1]
-    print ' betas_vector.shape[0] is ', betas_vector.shape[0]
+    betas_vector = np.matrix(coefficients).reshape(len(coefficients),1)
+##    print ' data_matrix.shape[1] is ', data_matrix
+##    print ' betas_vector.shape[0] is ', betas_vector
     assert data_matrix.shape[1] == betas_vector.shape[0], ' dimensions don\'t match here '
     
     print ' we are using these features ', features
 
     y_hat = data_matrix*betas_vector
+    
+    
     assert data[label_col].values.shape[0] == data_matrix.shape[0], ' dimensions don\'t match ' 
     residuals = data[label_col].values.reshape(len(data[label_col].values), 1) - y_hat
     print ' the type of residuals is ', type(residuals)
